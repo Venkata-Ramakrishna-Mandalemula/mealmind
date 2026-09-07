@@ -7,8 +7,9 @@ export type RestaurantSummary = {
   id: string;
   name: string;
   cuisines: string[];
-  rating: number;
+  rating: number | null;
   deliveryMinutes: number;
   deliveryFee: Money;
   isOpen: boolean;
+  image: { src: string; alt: string } | null;
 };

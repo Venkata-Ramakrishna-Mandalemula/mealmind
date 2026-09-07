@@ -1,69 +1,76 @@
 import Image from "next/image";
+import { SiteHeader } from "@/components/layout/site-header";
+import { Icon } from "@/components/ui/icon";
+import { RestaurantsExplorer } from "@/features/restaurants/components/restaurants-explorer";
+import { demoRestaurants } from "@/features/restaurants/data/demo-restaurants";
 import styles from "./page.module.css";
 
 export default function Home() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
+    <>
+      <SiteHeader />
+      <main id="main-content" tabIndex={-1} className={styles.main}>
+        <section className={styles.hero} aria-labelledby="home-heading">
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}>
+              <span /> A little inspiration for your appetite
+            </p>
+            <h1 id="home-heading">
+              What sounds
+              <br />
+              good <span>right now?</span>
+            </h1>
+            <p className={styles.intro}>
+              A little comfort. A new favorite.
+              <br />
+              Find something that hits the spot.
+            </p>
+          </div>
+          <div className={styles.heroPhoto}>
+            <Image
+              src="/images/food/discovery-bowl.jpg"
+              alt="A colorful bowl topped with vegetables and golden cubes"
+              fill
+              sizes="(max-width: 599px) 100vw, 560px"
+              loading="eager"
+              fetchPriority="high"
+            />
+            <span className={styles.photoNote}>
+              <Icon name="bowl" /> Good food, good mood.
+            </span>
+          </div>
+        </section>
+        <div className={styles.demoNotice}>
+          <span className={styles.demoBadge}>Demo collection</span>
           <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+            Sample restaurants, ratings, fees and delivery estimates. Orders
+            aren’t available yet.
           </p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
+        <RestaurantsExplorer restaurants={demoRestaurants} />
+        <aside
+          className={styles.closingNote}
+          aria-label="About this collection"
+        >
+          <Icon name="heart" />
+          <div>
+            <h2>A few favorites. A little less indecision.</h2>
+            <p>
+              Tap a heart to keep a shortlist while you explore. Your picks are
+              just for this visit.
+            </p>
+          </div>
+          <a href="#discover">
+            Back to the collection <Icon name="arrow" />
           </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        </aside>
       </main>
-    </div>
+      <footer className={styles.footer}>
+        <p>
+          MealMind <span>·</span> Made for the way you feel.
+        </p>
+        <p>Early preview · Stock food photography</p>
+      </footer>
+    </>
   );
 }

@@ -14,6 +14,8 @@ node_modules/
 coverage/
 *.lcov
 .nyc_output/
+test-results/
+playwright-report/
 
 # Framework and build output
 .next/

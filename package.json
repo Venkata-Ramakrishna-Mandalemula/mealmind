@@ -10,6 +10,7 @@
     "dev": "npm run dev --workspace=@mealmind/web",
     "build": "npm run build --workspace=@mealmind/web",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=@mealmind/web"
   }
 }

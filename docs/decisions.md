@@ -55,3 +55,41 @@ mealmind/
 ```
 
 The API, worker, shared packages, and infrastructure are intentionally absent until their implementation phases.
+
+## ADR-002: Build the first discovery UI with local state and the existing CSS Modules setup
+
+- **Status:** Accepted for the Day 2 foundation
+- **Date:** 2026-09-07
+
+### Problem
+
+The first usable Home section needs reusable cards, basic exploration, and consistent styling before business APIs exist. The user requested faster implementation with concepts documented and fewer intermediate questions.
+
+### Options considered
+
+1. Keep the scaffold's CSS Modules, add shared CSS design tokens, and use local React state for prototype interactions.
+2. Install Tailwind CSS now and replace the styling setup.
+3. Introduce global state, API fetching, or persistent favorites before the backend phase.
+
+### Decision
+
+Keep CSS Modules for scoped component styles and global CSS for tokens, focus, and resets. Tailwind was an earlier recommendation, not an installed dependency; continuing the existing setup avoids a migration for this small UI. Use a Server Component page for composition and a Client Component explorer for keyword, cuisine, open-only, and saved-only filtering. The explorer owns saved restaurant IDs and passes callbacks and values into cards.
+
+Add optional photo metadata and unrated support to the existing restaurant model using explicit nullable values. Use six clearly fictional local fixtures and stock photos. Display sample-data and session-only favorite disclosures. No order, identity, location, or natural-language functionality is implied.
+
+### Why
+
+The closest common parent can own the interaction state, and filtered results can be computed directly from that state and props. This makes Redux, network-state tooling, synchronization effects, and premature memoization unnecessary. `useRef` has one immediate purpose: moving focus to a stable target when an action removes its own button.
+
+### Tradeoffs
+
+- Favorites and filters reset on refresh; this is a local UI prototype, not the eventual account or shareable-search contract. URL state and server persistence will arrive with their features.
+- CSS Modules require explicit CSS and token discipline; a later styling change should be discussed if the approach proves inadequate.
+- Client rendering receives the entire six-record sample list. The production API must provide server-side filtering and pagination when data grows.
+- Cuisine filters currently use the first listed cuisine as a category; this is a fixture convention, not a final database taxonomy.
+- The Home reference is implemented incrementally. Account/cart links, smart search, restaurant routes, and the full mobile navigation await functioning destinations.
+- Brighter brand orange is supported by darker text/focus shades for legibility. The current Geist font is retained. Original reference image files are preserved.
+
+### Verification approach
+
+Lint, generated Next.js route types, TypeScript, and a production build precede browser checks. Playwright and axe are development dependencies for focused behavior and automated accessibility tests; they are not runtime application dependencies. The browser suite covers desktop and mobile viewports, combined filtering, saved-state lifecycle, focus recovery, missing-data presentation, images, and viewport overflow. Passing automated checks does not establish full accessibility conformance or measured production performance.
