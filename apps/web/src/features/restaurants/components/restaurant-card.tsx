@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import type { RestaurantSummary } from "../types/restaurant-summary";
 import styles from "./restaurant-card.module.css";
@@ -78,6 +79,10 @@ export function RestaurantCard({
               : `${fee} delivery`}
           </span>
         </div>
+        <Link className={styles.menuLink} href={`/restaurants/${restaurant.id}`}>
+          View menu<span className="sr-only"> for {restaurant.name}</span>
+          <Icon name="arrow" />
+        </Link>
       </div>
     </article>
   );

@@ -982,3 +982,251 @@ This checkpoint completes the first discovery UI implementation. It does not com
 - [React: Thinking in React](https://react.dev/learn/thinking-in-react) explains the progression from a component hierarchy to minimal state and ownership.
 - [React: Choosing the State Structure](https://react.dev/learn/choosing-the-state-structure) explains redundant and duplicated state.
 - The installed Next.js guides at `node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md`, `11-css.md`, and `12-images.md` were checked against this project's installed version for the client boundary, prerendering, CSS Modules, and image behavior. Dependency documentation is generated installation material, so these files are not committed.
+## Day 3 — Learning the restaurant-page journey
+
+Day 3 starts with explanations before application changes, as requested. The following examples are teaching examples, not implemented routes.
+
+### File-based routing and dynamic segments
+
+Day 2 displays restaurants on Home. The next journey is opening one restaurant's menu. In the App Router, `apps/web/src/app/page.tsx` represents `/`. A planned `apps/web/src/app/restaurants/[restaurantId]/page.tsx` represents URLs such as `/restaurants/spice-route` and `/restaurants/bowl-theory`. One page implementation handles different IDs. A folder alone does not expose a page: `/restaurants` would need its own `page.tsx`, but that index page is not required for the nested restaurant route. Files in `src/features` organize product behavior; they do not define URL routes.
+
+### Route params: reading the identifier
+
+Next.js supplies the dynamic segment through the page's `params` prop. The installed guide specifies a Promise, so an async Server Component awaits it:
+
+```tsx
+type RestaurantPageProps = {
+  params: Promise<{ restaurantId: string }>;
+};
+
+export default async function RestaurantPage({ params }: RestaurantPageProps) {
+  const { restaurantId } = await params;
+  return <h1>Restaurant: {restaurantId}</h1>;
+}
+```
+
+For `/restaurants/spice-route`, the resolved object is `{ restaurantId: "spice-route" }`. The property name comes from the bracketed folder name. A Promise represents a result that may become available later; `await` obtains its resolved value, and `async` permits this syntax in the function. Awaiting params does not fetch a restaurant or call a database. It obtains route information that we will use for a separate lookup.
+
+A route match is not proof that a restaurant exists. Someone can enter `/restaurants/does-not-exist`. The segment is still a string; the application must check the sample data or backend and handle a missing restaurant. TypeScript describes the value's shape, not its existence in our catalog. Also, a dynamic URL segment does not by itself mean the page must render on every request; rendering and prerendering are separate concepts to cover later.
+
+**Interview takeaway:** A dynamic route captures a URL segment; async params expose that captured value to a page. Domain lookup and missing-record handling are separate responsibilities.
+
+**Status:** File-based routing has been explained and acknowledged. Async params are introduced here; independent practice and application implementation are not yet recorded. The installed reference is `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md`.
+
+### Layouts: sharing the surrounding UI
+
+As MealMind grows from Home to restaurant menus, pages need shared surroundings without copying the header into each page. A `page.tsx` defines route-specific content; a `layout.tsx` wraps pages and nested layouts beneath its route segment. Next.js supplies that content through the React `children` prop. We do not manually import each page into the layout.
+
+The existing `apps/web/src/app/layout.tsx` supplies `<html>`, `<body>`, font setup, global styles, default metadata, and the skip link. Home currently renders `SiteHeader` in its own page. Moving the shared header into a layout is a proposed Day 3 change, not something this lesson implements.
+
+Conceptually, the shared shell would render a header followed by `{children}`. On `/`, children represents Home; on `/restaurants/spice-route`, it represents the restaurant route content. The actual rendering tree can include nested layouts and framework boundaries. The root layout must provide `<html>` and `<body>`; ordinary nested layouts do not repeat them.
+
+A hypothetical `app/restaurants/layout.tsx` would wrap routes beneath `restaurants`, but not Home. Such a file is optional: a nested route does not need its own layout if it has no additional shared UI. Each route should still have one appropriate main landmark; if a layout owns `<main>`, pages should not nest another `<main>` inside it, and the skip-link target must remain available.
+
+During client-side navigation within a shared layout, Next.js reuses that layout, allowing state in its mounted client components to survive. This is not permanent storage: a full reload resets ordinary in-memory state. It also does not preserve every page's local state. Our saved restaurant IDs currently belong to the Home explorer; sharing a header alone does not move or persist that state. Client components in a layout can still rerender when their state changes.
+
+**Interview takeaway:** Pages supply route-specific UI; layouts supply shared surrounding UI and can nest by route hierarchy. Layout reuse during navigation is distinct from persisting data across reloads.
+
+**Status:** Introduced with the current code as context; application code is unchanged. Reference: installed `node_modules/next/dist/docs/01-app/01-getting-started/03-layouts-and-pages.md`, layout and nesting sections. Next topic: Server and Client Components.
+
+### Server and Client Components: placing work in the right environment
+
+Day 2 already illustrates this boundary. `apps/web/src/app/page.tsx` is a Server Component: it composes Home and supplies the fictional restaurant records to `RestaurantsExplorer`. The explorer begins with `"use client"` and owns search, cuisine selection, saved IDs, event handlers, and focus refs. Those interactions need browser-side React state and behavior; the surrounding Home content does not need that client logic.
+
+App Router pages and layouts are Server Components by default. Their component code executes in the server environment, potentially during a build or at request time, rather than becoming browser component code. Server Components can read server-side data and use private credentials, but must not expose secrets in rendered output or props sent to the browser. They do not use interactive hooks such as `useState` or browser event handlers. A Server Component can render a Client Component without itself becoming one.
+
+`"use client"` declares a client module boundary, not a command to disable server HTML rendering. The explorer and its runtime imports, including RestaurantCard, join the client module graph; each imported component does not need another directive. Server-rendered content composed on the server and passed through a client component's `children` slot is a different case: it does not automatically become client component code.
+
+For an initial page load, Next.js can prerender Client Components into HTML too. React then hydrates the client components in the browser, connecting their behavior to that initial UI. Therefore, do not read `window` or `localStorage` unconditionally during render just because a file has `"use client"`; use an appropriate browser-only event or effect. Hydration and rendering strategies will receive their own lesson.
+
+Props crossing from server to client must be serializable by React. Our plain restaurant records are suitable; an ordinary callback function created in the Server Component cannot be passed as an interactive client callback. The explorer creates `toggleSave` inside the client boundary and can pass callbacks to its client-side cards. React serialization is broader than JSON, and explicitly marked Server Functions are a separate supported mechanism, not ordinary callbacks; they are outside this lesson's implementation scope.
+
+This is a frontend rendering boundary, not a change to our backend architecture. Next.js Server Components do not replace the planned NestJS application that will own business domains. A future restaurant Server Component can obtain data from that API and compose a menu with small client-side controls as needed. No backend or menu route is added in this lesson.
+
+**Interview takeaway:** Keep data access and non-interactive composition on the server where appropriate; use client boundaries for state, events, and browser behavior. Client Components can still have initial server-rendered HTML, and Server Components need not execute on every request.
+
+**Status:** Explained against existing Day 2 code; no application changes or new verification run. Reference: installed `node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md`. Next topic: initial rendering and hydration.
+
+### Rendering and hydration: from visible HTML to working filters
+
+Rendering means React evaluates components to work out the UI. It can occur in the server environment or browser, depending on the component and stage. Hydration is the initial browser process that connects client-side React logic to existing server-rendered HTML; it is not the name for every later state update.
+
+On a full initial visit to MealMind, Next.js produces HTML, using the Server Component result and initial Client Component rendering. This production can happen ahead of the visit or at request time, depending on the route's rendering strategy. The browser can display restaurant cards before the explorer's JavaScript is ready. Next.js also supplies the React Server Component payload: serialized server-rendered results, client component references, and their props, which React uses to reconcile the tree. Client JavaScript hydrates the explorer, connecting its state and event behavior to the initial UI. This is a conceptual sequence, not a claim that streaming and hydration must finish globally before any region becomes usable.
+
+Before hydration, ordinary HTML behavior such as typing into a native input or following a normal link can still work. MealMind's React-powered filtering and saved toggles need the corresponding client code. After hydration, typing changes `query`, React rerenders the explorer, and the filtered list updates. That update is a state-driven render, not another hydration and not a required backend request.
+
+The server HTML and the first browser render must agree. For example, showing a random number directly during render can produce different text on the two sides and cause a hydration mismatch. Browser-only saved preferences need a deliberate loading strategy rather than changing the first render unpredictably. Our current explorer starts from fixed initial state, including an empty query and empty saved IDs, and does not implement persistent preferences. These are preventive examples, not a diagnosis of an existing MealMind bug.
+
+Server Component code itself is not hydrated into browser component code; its rendered result participates in the page. A subsequent Next.js client-side navigation uses the routing and RSC update flow rather than repeating a full document load. Navigation details follow in a later lesson.
+
+**Interview takeaway:** Rendering calculates UI; server rendering can supply initial HTML; hydration connects browser React behavior to that HTML. Later state updates are rerenders, not hydration. Client Components can participate in both server HTML generation and browser interactivity.
+
+**Status:** Concept introduced and connected to the existing explorer; no application changes or new runtime checks. Reference: installed `node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md`, server and first-load sections. Next topic: prerendering versus request-time rendering.
+
+### Prerendering versus request-time rendering: when the server works
+
+Component type and rendering timing answer different questions. Server versus Client Components determines where component logic belongs and how browser interactivity is supplied. Prerendering versus request-time rendering determines when server work is performed. A Server Component is not automatically rendered on every request, and a prerendered page can contain hydrated, interactive Client Components.
+
+Prerendering prepares output ahead of a visitor's request, commonly during the production build. That prepared output can be reused for visits. MealMind's fictional public restaurant collection is a useful candidate because the initial content does not depend on a visitor's session. Search and save controls can still work after hydration. The Day 2 verification entry records Home as prerendered at that checkpoint; this lesson does not run a fresh build or claim a newly verified build result.
+
+Request-time rendering performs server work in response to a request. A future page that reads a visitor's session to show their own orders is a useful example of request-specific rendering. This is illustrative, not an implemented orders page. Request-time rendering does not itself guarantee fresh data: data sources and caching policies also affect freshness. Likewise, prerendering does not mean output can never change; rebuilding or configured revalidation can refresh it. Detailed caching decisions are deferred.
+
+Dynamic URL segments are a separate concern. `/restaurants/[restaurantId]` can represent many restaurant URLs without requiring every known restaurant page to render on every visit. Next.js provides `generateStaticParams` to supply known parameter values for build-time generation, for example `[{ restaurantId: "spice-route" }]`. Returning that ID does not retrieve menu data or decide the handling of every unknown ID. Those decisions require the page's lookup logic and route configuration. This lesson introduces the option without implementing it.
+
+The current `apps/web/next.config.ts` has no explicit options, including no enabled `cacheComponents` option. Advanced Cache Components behavior can combine a static shell with request-time content, but we should not apply that opt-in model to this project without configuring and reviewing it. Route timing should be checked in a production build; development-server behavior alone is not proof of production prerendering.
+
+**Interview takeaway:** Prerendering prepares reusable output ahead of visits; request-time rendering performs work for a request. Neither determines whether the page has interactive controls, and a dynamic path does not necessarily imply request-time rendering.
+
+**Status:** Introduced, not implemented; configuration inspected but no build rerun. References: installed `node_modules/next/dist/docs/01-app/01-getting-started/04-linking-and-navigating.md` server rendering section and `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md` static parameter generation section. Next topic: Link, client-side navigation, and prefetching.
+
+### Navigation: opening a restaurant with Link
+
+The planned restaurant journey needs a real URL, not just a click handler on a card. A teaching example is `<Link href="/restaurants/spice-route">View Spice Route menu</Link>`, importing Link from `next/link`. Link renders an anchor with normal link semantics and enhances same-app navigation when the client router is available. It supports keyboard activation and normal browser behaviors such as opening a new tab. Use a button for an action such as saving a restaurant, and keep that button outside the menu link rather than nesting interactive controls.
+
+On an ordinary same-tab client-side navigation, Next.js updates the URL and changes the relevant route content without replacing the whole browser document. Shared layouts can stay mounted. This does not mean there is no server work or network request: missing route data and code may still need to load, including server-rendered RSC results. Merely using Link does not require adding `"use client"` to its containing page or layout. The existing SiteHeader already uses Link for the MealMind Home wordmark.
+
+Prefetching means preparing route resources before the click. In production, Next.js can automatically prefetch eligible Link destinations when links enter the viewport. With the default behavior described in the installed guide, static routes can be fully prefetched; dynamic rendering routes may be skipped or partially prefetched to a loading boundary. Here static/dynamic refers to rendering behavior, not simply the presence of `[restaurantId]` in a folder name. Prefetching is an optimization, not a guarantee of instant navigation. Automatic prefetching is production-only, so `npm run dev` is not a suitable way to verify it. Per-link `prefetch={false}` can disable it; we have not decided that this application needs that override.
+
+A direct visit, refresh, or new tab at `/restaurants/spice-route` must also work. These are full document visits, unlike an already-running app's client-side transition. The restaurant page therefore needs to obtain the ID from params and find its own data; it must not rely on a previously clicked Home card storing the selected restaurant in memory. React-only interactions still require client JavaScript, even though a real anchor provides a normal navigation fallback.
+
+There is a concrete follow-up for the proposed shared header: its existing `href="#discover"` points within the current document. Once the header appears on a restaurant page, the discovery link must target Home's section, such as `/#discover`, rather than an absent menu-page anchor. This is recorded as implementation work, not changed in this lesson.
+
+**Interview takeaway:** Link provides semantic links with client-side navigation and optional prefetching. Client-side navigation avoids a full document replacement, not necessarily a network request. Direct URL visits must work independently of prior in-memory navigation state.
+
+**Status:** Introduced on 2026-09-09; existing header inspected, but no restaurant links or application changes made. References: installed `node_modules/next/dist/docs/01-app/01-getting-started/04-linking-and-navigating.md` and `node_modules/next/dist/docs/01-app/03-api-reference/02-components/link.md`. Next topic: loading UI, Suspense, and streaming.
+
+### Loading UI and Suspense: showing progress while content is pending
+
+When a restaurant page needs time to prepare its content, visitors need feedback. A planned `apps/web/src/app/restaurants/[restaurantId]/loading.tsx` can export a lightweight component such as `return <p role="status">Loading restaurant menu...</p>`. This is a teaching example, not an added application file. A skeleton is another option: placeholder shapes resembling the future menu, without implying that real data has already loaded.
+
+Next.js automatically places this route fallback in a Suspense boundary around the same segment's page and descendants. It sits inside the same segment's layout, not around that layout. As pending content becomes ready, it replaces the fallback; shared layouts outside the boundary can remain visible and interactive. If the destination is already prepared or prefetched, the fallback may never visibly appear. We should not introduce artificial production delays merely to make a loading indicator visible.
+
+Suspense is React's mechanism for displaying fallback UI when supported rendering work inside a boundary suspends. It does not start a fetch itself or automatically observe every asynchronous operation. In particular, ordinary fetching in an event handler or `useEffect` does not automatically activate Suspense; that workflow needs explicit pending state or a Suspense-aware integration. Next.js async Server Component rendering is a supported use case.
+
+For finer control, a page can render a ready restaurant heading outside a boundary and put a pending menu inside `<Suspense fallback={<MenuSkeleton />}><RestaurantMenu /></Suspense>`. These component names are illustrative, not existing files. The asynchronous work must occur inside the subtree covered by the boundary: awaiting all menu data before returning the boundary cannot let that boundary show feedback for the earlier wait.
+
+Streaming allows the server to send ready UI before all content has finished, then send remaining content as it becomes available. It is distinct from hydration, which connects browser React behavior to HTML. Loading feedback improves perceived responsiveness; it does not make the underlying data operation faster. A fallback is for pending work, not failed work or a confirmed missing restaurant; error and not-found handling follow separately.
+
+For implementation, use a lightweight meaningful status, hide purely decorative skeleton shapes from assistive technology, and respect reduced-motion preferences if placeholders animate. Keep the page's main landmark and skip-link target usable during loading. Test pending states deliberately with controlled test conditions rather than relying on fast sample data to reveal them.
+
+**Interview takeaway:** `loading.tsx` supplies a route-level Suspense fallback. Explicit Suspense boundaries allow smaller regions to load independently, and streaming delivers ready content progressively. Suspense requires supported suspension, not merely the existence of a Promise somewhere in the application.
+
+**Status:** Introduced on 2026-09-10; documentation only, no application changes or runtime verification. Reference: installed `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/loading.md`. Two Day 3 topics remain: missing/error handling and dynamic metadata.
+
+### Missing restaurants versus unexpected failures
+
+A matched URL does not guarantee a matching restaurant. A successful lookup with no record is an expected missing-resource case: call `notFound()` from `next/navigation` in the page's render path, and Next.js selects the applicable `not-found.tsx` UI. A proposed message is "Restaurant not found" with a link back to discovery. This is distinct from a valid restaurant with no menu items, which should have an empty-menu state, or a closed restaurant, which still exists.
+
+Teaching example inside the planned page, after awaiting params:
+
+```tsx
+const restaurant = demoRestaurants.find((item) => item.id === restaurantId);
+if (!restaurant) notFound();
+// restaurant is defined here; render its content.
+```
+
+`notFound()` stops execution by throwing a framework-handled signal and has the TypeScript return type `never`. That lets TypeScript narrow the checked value afterward. Do not accidentally swallow that signal in a broad try/catch. Next.js also emits noindex metadata. A not-found screen is not an unconditional guarantee of HTTP 404: if streaming already sent the response headers, the response can remain HTTP 200 even though the not-found UI and noindex marker are delivered.
+
+Unexpected render failures use a different path: the nearest applicable `error.tsx` displays a recovery screen. Examples include a thrown programming error or an unhandled data-loading failure. A future backend outage must not be converted into "restaurant not found" merely because the request failed; distinguish a confirmed missing record from failure to determine whether it exists.
+
+`error.tsx` must be a Client Component. The installed Next.js guide currently provides `error` and `retry` props: `retry()` attempts to re-fetch and re-render the affected subtree. Its separate `reset()` API clears error state and rerenders without re-fetching. Older examples may show only reset, so use the installed API when implementing recovery. Recovery is an attempt, not a promise that a broken backend or code bug is repaired.
+
+A segment's error boundary covers its page and descendants, not its same-segment layout or template. Layout errors need a boundary above them; root layout errors need `global-error.tsx`. Ordinary event-handler errors and detached asynchronous failures are not automatically caught by route render boundaries and need appropriate local handling. Do not expose raw error details or secrets to visitors; use a friendly message and protected diagnostic logging. Production Server Component errors are sanitized and can include a digest for correlation with server logs.
+
+The planned restaurant route may therefore contain `page.tsx`, `loading.tsx`, `not-found.tsx`, and `error.tsx`, each with a different responsibility. This is a teaching plan, not newly created application files.
+
+**Interview takeaway:** Loading means pending, not-found means a confirmed missing resource, and an error boundary handles unexpected failures in its covered rendering subtree. These are not interchangeable states.
+
+**Status:** Introduced on 2026-09-10; learning log only, no application changes or runtime tests. References: installed `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/error.md` and `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/not-found.md`, plus the preceding loading guide's streaming status-code discussion. One Day 3 topic remains: dynamic metadata.
+
+### Dynamic metadata: giving each restaurant its own page identity
+
+Metadata describes a page rather than forming its visible menu content. The title identifies it in the browser tab, and a description supplies a summary that search engines may use; neither guarantees search ranking or the exact search snippet shown. Open Graph fields are additional metadata for link previews and are distinct from the basic title and description.
+
+An exported `metadata` object defines fixed values. An exported `generateMetadata` function computes values from route information or data. Both are server-only page/layout APIs; do not export both from the same route file. Our planned restaurant page can await params, find the restaurant, handle a missing record, and return its name in the title:
+
+```tsx
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { demoRestaurants } from "@/features/restaurants/data/demo-restaurants";
+
+export async function generateMetadata({ params }: {
+  params: Promise<{ restaurantId: string }>;
+}): Promise<Metadata> {
+  const { restaurantId } = await params;
+  const restaurant = demoRestaurants.find((item) => item.id === restaurantId);
+  if (!restaurant) notFound();
+
+  return {
+    title: `${restaurant.name} menu | MealMind`,
+    description: `Explore the sample menu for ${restaurant.name} on MealMind.`,
+  };
+}
+```
+
+This is a teaching example, not implemented menu functionality. Next.js invokes this named export; the page component separately renders its visible UI. Changing metadata does not create or update the page's h1. A shared lookup can later keep the page and metadata consistent without treating all lookup failures as missing records.
+
+Layouts supply metadata defaults, and pages can override fields such as title and description. More complex nested fields have their own merge rules, so do not assume all metadata is deeply merged. Generated metadata does not automatically require request-time rendering: with known data and prerenderable routes it can be resolved during the build. On dynamically rendered routes metadata can stream separately, with blocking behavior for certain crawlers that need it in the initial head.
+
+When implementing, verify restaurant-specific titles on both direct visits and client-side navigation, inspect description output, and check missing-resource behavior. Do not add useEffect just to set document.title when the server metadata API fits the requirement.
+
+**Interview takeaway:** Static metadata provides fixed page information; generateMetadata derives it from route data on the server. Metadata and visible content are separate, and generated metadata is compatible with prerendering.
+
+**Status:** Final planned Day 3 lesson introduced on 2026-09-10; independent mastery is not asserted. All planned theory topics have now been explained. Day 3 application implementation and its verification remain pending; only this learning document was updated. Reference: installed `node_modules/next/dist/docs/01-app/01-getting-started/14-metadata-and-og-images.md`.
+
+### Day 3 implementation: connecting discovery to a restaurant menu
+
+After the lessons, the project moved from a single Home screen to a navigable restaurant journey. A visitor can now use a card's "View menu" link, open a bookmarked restaurant URL, refresh it, browse its menu categories, and return to discovery. The UI follows the existing warm palette and typography. Restaurant covers reuse credited stock assets; menu rows emphasize names, descriptions, and prices. We omitted the reference's add-to-cart controls because ordering is a later phase, and did not add separate nested layouts without shared UI to put in them.
+
+#### Follow one request through the code
+
+1. `features/restaurants/components/restaurant-card.tsx` renders a Next Link to `/restaurants/${restaurant.id}`. The save button remains a separate interactive element. Keyboard users can focus and activate the menu link without triggering save.
+2. `app/restaurants/[restaurantId]/page.tsx` awaits the params Promise. That file is a Server Component and the routing entry point, not a second implementation of restaurant business services.
+3. `features/restaurants/data/get-demo-restaurant.ts` finds both the restaurant and its menu using exact IDs. Both the page and generateMetadata call this helper. It returns null for an unknown restaurant. It throws for an unexpectedly missing menu fixture for a known restaurant, so a data error cannot silently become an empty menu.
+4. `features/restaurants/components/restaurant-menu.tsx` renders the cover, restaurant details, category links, and menu rows on the server. Native anchors link to focusable category headings. No new useState, effect, or client boundary is needed for this menu browsing step.
+5. The root `app/layout.tsx` keeps SiteHeader around both Home and menu routes. Its discovery link now points to `/#discover`, which works from either page. Each page supplies one main landmark and the skip-link target.
+
+#### Menu data and TypeScript choices
+
+`types/restaurant-menu.ts` introduces MenuItem, MenuCategory, and RestaurantMenu. MenuItem reuses the existing Money shape with integer cents and USD. Categories contain readonly arrays of items, and menus contain readonly arrays of categories. Readonly is a TypeScript restriction on mutation through that reference; it is not runtime freezing or validation of untrusted API responses.
+
+`data/demo-menus.ts` contains authored sample records for the existing six fictional restaurants. Five have short menus; Morning Crumb intentionally has an empty categories array. This tests the difference between an existing restaurant with nothing published and a nonexistent restaurant. The catalog's closed flag is displayed independently from whether a menu exists.
+
+Prices are formatted with Intl.NumberFormat for display only. The menu explicitly labels the data as illustrative and explains that item prices exclude fees and taxes. This is not TruePrice, an order quote, an API DTO, or a replacement for the planned NestJS/database source of truth. We did not add Zod to validate locally authored fixtures; schema validation remains necessary when untrusted external data enters the application.
+
+#### Rendering and metadata made concrete
+
+The route's generateStaticParams enumerates all six IDs for build-time generation. The production build identifies those URLs as SSG and Home as static. The page and metadata lookup only read local records, so there is no network request to deduplicate and no reason to add a data-cache layer here. generateMetadata returns a title such as "Spice Route menu | MealMind" and a sample-menu description. The visible h1 is rendered separately by RestaurantMenu.
+
+The Home explorer remains a Client Component. Shared header reuse does not relocate its filters or saved IDs; cross-route state ownership is still a Day 4 decision. Existing saved-state tests check hiding/restoring cards and reload behavior, not a promise of durable favorites.
+
+#### Route states and their boundaries
+
+- `restaurants/[restaurantId]/loading.tsx` renders a meaningful status through RouteMessage. Next.js supplies the Suspense boundary; no manual duplicate boundary or artificial delay is necessary for these prepared fixtures.
+- `restaurants/[restaurantId]/not-found.tsx` explains a missing restaurant and provides a discovery link. The route calls notFound after a confirmed null lookup.
+- `restaurants/[restaurantId]/error.tsx` is a Client Component with a friendly message and the installed retry callback. It reuses Button and RouteMessage without exposing the error object in UI.
+- `app/not-found.tsx` handles unrelated unknown URLs while preserving a main landmark and a return path.
+- A valid empty menu is rendered within RestaurantMenu. It does not throw or use the route error screen.
+
+RouteMessage is a small reusable layout for a heading, explanatory content, and a recovery link. ReactNode children let the error screen add a retry button while the missing and loading screens supply their own text. When imported by error.tsx it is included in that client module graph, even though RouteMessage does not declare use client itself.
+
+#### Verification and interview practice
+
+`tests/restaurant-menu.spec.ts` exercises user-visible behavior across desktop/mobile: keyboard route navigation, retaining the same header DOM node across a client transition, category jumps, returning to discovery, all six direct URLs, refreshes, titles/descriptions, unknown IDs, and unmatched URLs. It also checks the skip link, loaded cover image, one main landmark, narrow-screen overflow, browser exceptions, and selected axe accessibility rules. Existing discovery tests cover regressions in filters, saved controls, focus, and images.
+
+Unknown-ID tests include `constructor` to ensure an arbitrary string is treated as a lookup value rather than inherited object-map data. A normal unmatched URL is checked for HTTP 404; streamed restaurant not-found output is checked for its UI and noindex marker instead of assuming its status code.
+
+Loading and unexpected-error components are compiled by the production build. The browser suite does not force server-render suspension or inject an internal server failure, so it does not prove the pending fallback or retry recovery under those conditions. Those need a controlled integration test when asynchronous data access is introduced. The current app contains no hidden failure URL, delay query parameter, or deliberately broken fixture. Manual screen-reader and physical-device checks remain outside this run.
+
+Optional interview practice: explain why one dynamic route produces six prepared pages; why a direct visit needs no previously selected Home card; why a closed restaurant can still have a menu; why missing data and a failed request need different handling; and why importing RouteMessage from an error component changes its client dependency context. These are practice prompts, not claims of independently demonstrated mastery.
+
+#### Verified checkpoint — 2026-09-10
+
+- ESLint passed for application and test code.
+- Production build passed, including TypeScript checking and generated route types. Home is static and all six restaurant pages are prerendered through generateStaticParams.
+- All 18 Playwright desktop/mobile tests passed against that production build (58.3 seconds for the suite, not a performance benchmark).
+- Selected axe WCAG A/AA scans passed on Home, the restaurant menu, the empty menu, and missing-page screens. No browser exceptions were observed in the monitored scenarios.
+- Desktop and mobile menu screenshots were reviewed. Their visible main outlines came from the test's keyboard skip-link focus, not a decorative page border.
+- Git whitespace checking passed. Both approved design reference image hashes remain unchanged.
+
+Day 3's implementation checkpoint is complete and ready for local review and a separate Git commit. No commit or push was performed. No dependencies were added and no backend, cart, or state-management library was introduced. The pending/error runtime-testing limits above remain explicit; passing this suite does not establish recovery from a real API outage. The local Node runtime still reports v20.16.0; the previously recorded dependency-engine compatibility concern remains unresolved by these passing checks.

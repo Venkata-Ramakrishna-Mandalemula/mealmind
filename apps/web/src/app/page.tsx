@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { SiteHeader } from "@/components/layout/site-header";
 import { Icon } from "@/components/ui/icon";
 import { RestaurantsExplorer } from "@/features/restaurants/components/restaurants-explorer";
 import { demoRestaurants } from "@/features/restaurants/data/demo-restaurants";
@@ -8,7 +7,6 @@ import styles from "./page.module.css";
 export default function Home() {
   return (
     <>
-      <SiteHeader />
       <main id="main-content" tabIndex={-1} className={styles.main}>
         <section className={styles.hero} aria-labelledby="home-heading">
           <div className={styles.heroCopy}>

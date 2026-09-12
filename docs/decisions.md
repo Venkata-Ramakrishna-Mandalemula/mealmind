@@ -93,3 +93,25 @@ The closest common parent can own the interaction state, and filtered results ca
 ### Verification approach
 
 Lint, generated Next.js route types, TypeScript, and a production build precede browser checks. Playwright and axe are development dependencies for focused behavior and automated accessibility tests; they are not runtime application dependencies. The browser suite covers desktop and mobile viewports, combined filtering, saved-state lifecycle, focus recovery, missing-data presentation, images, and viewport overflow. Passing automated checks does not establish full accessibility conformance or measured production performance.
+
+## ADR-003: Build the restaurant journey with prerendered pages and local menu fixtures
+
+- **Status:** Accepted for the Day 3 prototype
+- **Date:** 2026-09-10
+
+### Decision and reasons
+
+Use one `restaurants/[restaurantId]/page.tsx` Server Component and `generateStaticParams` for the six known sample restaurants. Both metadata and visible content use the same local lookup. The root layout now owns SiteHeader; the Home and restaurant pages each own their main landmark. No additional nested layout is needed just to demonstrate nesting.
+
+Keep menus in typed, explicitly fictional fixture records while the backend phase remains pending. The menu renderer is a Server Component, and category navigation uses native anchors. Reuse existing local stock photography for the restaurant cover; omit invented per-dish photographs and cart buttons until their functionality exists. This follows the approved visual hierarchy while keeping the prototype's behavior accurate.
+
+Use route-level loading, not-found, and error conventions. An unknown restaurant returns null from lookup; a known restaurant with an intentionally empty menu renders an empty state. A missing menu fixture for a known restaurant throws as a data error. The error screen uses the installed Next.js `retry()` API to attempt recovery without exposing error details.
+
+### Tradeoffs
+
+- Sample content changes require a new build for prepared pages. No API caching or revalidation policy is introduced yet.
+- Fast prerendered routes may not visibly show loading UI. No artificial production delay or failure trigger is added.
+- Home owns its filters and saved IDs; layout sharing alone does not establish cross-route favorites persistence. State ownership will be revisited in Day 4.
+- Category anchors avoid extra client JavaScript but do not implement active-tab tracking or menu search.
+- Route-specific error handling does not cover failures in the root layout or ordinary event handlers.
+- Unknown URLs can use the runtime not-found path; if a response has started streaming, the screen and noindex marker do not necessarily imply an HTTP 404 status. Tests distinguish unmatched URL status from streamed missing-resource presentation.

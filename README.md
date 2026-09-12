@@ -1,6 +1,6 @@
 # MealMind
 
-MealMind is a food-discovery and ordering project being built incrementally with a Next.js customer app and a planned NestJS modular backend. The current implementation is a responsive Home-screen demo using fictional restaurant data, local keyword and cuisine filtering, open-only and saved-only filters, and temporary favorites.
+MealMind is a food-discovery and ordering project being built incrementally with a Next.js customer app and a planned NestJS modular backend. The current implementation is a responsive discovery and restaurant-menu demo using fictional data, local keyword and cuisine filtering, open-only and saved-only filters, and temporary favorites.
 
 The approved visual references are in [docs/design](docs/design). The first UI follows their warm off-white, orange, and dark-text direction while making the demo's limitations explicit.
 
@@ -23,11 +23,15 @@ The current demo needs no API keys, database, Docker service, or environment fil
 - Searches the sample catalog by local text and applies cuisine, availability, and saved-only filters.
 - Saves or unsaves restaurant IDs in the current page's React state.
 - Handles empty results and missing restaurant images or ratings.
+- Opens restaurant menus at `/restaurants/[restaurantId]`, with category links, item descriptions, sample prices, and restaurant-specific metadata.
+- Shares the header across pages and handles missing restaurants, empty menus, route loading, and unexpected menu-rendering errors.
 - Uses keyboard-accessible native controls, visible focus treatment, and responsive styles.
 
 Restaurant names, ratings, availability, delivery estimates, and fees are illustrative records, not live business data. Food photographs illustrate the interface rather than actual restaurant offerings. Search is local matching, not AI interpretation. Favorites reset on reload and are not synchronized between browsers or users.
 
-Menus, authentication, persisted favorites, an API, database, cart, checkout, payments, order tracking, and AI integrations have not been implemented. A displayed delivery fee is not an authoritative order quote.
+Menu data is authored locally for the prototype. Authentication, persisted favorites, an API, database, cart, checkout, payments, order tracking, and AI integrations have not been implemented. A displayed price or delivery fee is not an authoritative order quote. Saved IDs belong to the Home explorer and are not guaranteed to survive leaving that page; cross-route state ownership is a Day 4 concern.
+
+Try `/restaurants/spice-route` for a menu, `/restaurants/morning-crumb` for a closed restaurant with an empty menu, and `/restaurants/does-not-exist` for missing-resource handling. Known restaurant routes are generated during the production build. Their content does not need a backend request, and the loading screen may not visibly appear during normal fast navigation.
 
 ## Project structure
 
@@ -37,7 +41,7 @@ mealmind/
     public/                    Public assets
     src/app/                   Routes, layout, and global styles
     src/components/            Shared layout and UI components
-    src/features/restaurants/  Catalog types, sample data, and discovery UI
+    src/features/restaurants/  Catalog/menu types, sample data, discovery and menu UI
   docs/
     design/                    Approved visual references
     decisions.md               Architectural decisions and tradeoffs
@@ -69,7 +73,7 @@ npm run test:e2e
 
 Playwright starts and stops its own production server at `http://127.0.0.1:3100`. Keep that port available. It tests desktop and mobile layouts using the installed Microsoft Edge on Windows. On other systems, first install its Chromium browser with `npm exec --workspace=@mealmind/web -- playwright install chromium`. You can choose a supported installed browser channel with `PLAYWRIGHT_CHANNEL`; for example, set `$env:PLAYWRIGHT_CHANNEL = "chrome"` in PowerShell to use Chrome.
 
-The tests exercise combined filters, favorites across hidden/reappearing cards, refresh reset, keyboard focus, image loading, empty states, viewport overflow, reduced motion, and an axe accessibility scan. Automated checks do not replace manual screen-reader or real-device testing. Screenshots and failure traces are written to ignored `apps/web/test-results/`.
+The tests exercise combined filters, favorites across hidden/reappearing cards, refresh reset, keyboard focus, image loading, empty states, viewport overflow, reduced motion, and axe accessibility scans. Menu checks cover all six direct routes, reloads, client navigation with a retained shared header, category links, metadata, unknown IDs, and unmatched URLs. Automated checks do not replace manual screen-reader or real-device testing. Screenshots and failure traces are written to ignored `apps/web/test-results/`.
 
 `next/font/google` may download the scaffold's Geist fonts during a build if they are not cached. The built app serves the fonts and food images locally to visitors. Photo sources are recorded in [asset credits](docs/design/asset-credits.md).
 

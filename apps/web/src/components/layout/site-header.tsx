@@ -12,9 +12,9 @@ export function SiteHeader() {
           Good food. A little less thought.
         </span>
         <nav aria-label="Main navigation">
-          <a className={styles.explore} href="#discover">
+          <Link className={styles.explore} href="/#discover">
             Explore restaurants <span aria-hidden="true">↗</span>
-          </a>
+          </Link>
         </nav>
       </div>
     </header>

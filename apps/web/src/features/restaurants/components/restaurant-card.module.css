@@ -5,6 +5,17 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
+.menuLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-top: 12px;
+  color: var(--color-accent-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.menuLink svg { width: 18px; height: 18px; }
 .photo {
   position: relative;
   aspect-ratio: 1.65;
